@@ -127,9 +127,10 @@ fn highlight(source: &str, ext: &str) -> Result<String, Error> {
 }
 
 impl Html {
-    pub async fn from(entry: Entry, ext: String) -> Result<Self, Error> {
+    pub async fn from(entry: &Entry, ext: String) -> Result<Self, Error> {
+        let text = entry.text.clone();
         Ok(Self(
-            tokio::task::spawn_blocking(move || highlight(&entry.text, &ext)).await??,
+            tokio::task::spawn_blocking(move || highlight(&text, &ext)).await??,
         ))
     }
 

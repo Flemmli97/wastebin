@@ -1,0 +1,10 @@
+version: '3.3'
+services:
+  wastebin:
+    build: .
+    environment:
+      - WASTEBIN_DATABASE_PATH=/data/state.db
+    ports:
+      - "8088:8088"
+    volumes:
+      - './data:/data'

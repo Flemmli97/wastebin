@@ -1,21 +1,43 @@
 {% extends "base.html" %}
 
 {% block head %}
-<script>
+<script>  
   function dropHandler(ev) {
     ev.preventDefault();
 
     let textarea = document.getElementById('text');
+    let filename = document.getElementById('filename');
+    let options = document.getElementById('langs').getElementsByTagName('option')
 
     if (ev.dataTransfer.items) {
       const item = ev.dataTransfer.items[0];
 
       if (item.kind === 'file') {
         item.getAsFile().text().then((value) => textarea.value = value);
+        filename.value = item.getAsFile().name
+        let name = item.getAsFile().name;
+        let file_extension = name.substring(name.lastIndexOf('.') + 1, name.length) || name
+        for (let option of options) {
+          let extensions = option.dataset.extra.split(",")
+          if (extensions.includes(file_extension)) {
+              option.selected = true
+              break
+          }
+        }
       }
     } else {
       const item = ev.dataTransfer.files[0];
       item.text().then((value) => textarea.value = value);
+      filename.value = item.getAsFile().name
+      let name = item.getAsFile().name;
+      let file_extension = name.substring(name.lastIndexOf('.') + 1, name.length) || name
+      for (let option of options) {
+        let extensions = option.dataset.extra.split(",")
+        if (extensions.includes(file_extension)) {
+              option.selected = true
+              break
+          }
+      }
     }
   }
 
@@ -73,11 +95,14 @@
           <textarea id="text" name="text" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="<paste text or drop file here>" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);" onkeydown="keyDownHandler(event);" autofocus></textarea>
         </div>
         <div class="controls">
+          <div class="filename">
+            <input type="filename" name="filename" id="filename" placeholder="Name (Optional)"></input>
+          </div>
           <div class="extensions-list">
             <select name="extension" id="langs" size="17">
             {%- for syntax in meta.highlight.syntaxes -%}
               {%- if syntax.file_extensions.len() > 0 %}
-              <option value="{{ syntax.file_extensions.first().unwrap() }}">{{ syntax.name }}</option>
+              <option value="{{ syntax.file_extensions.first().unwrap() }}" data-extra='{{ syntax.file_extensions.join(",") }}'>{{ syntax.name }}</option>
               {%- endif -%}
             {%- endfor %}
             </select>

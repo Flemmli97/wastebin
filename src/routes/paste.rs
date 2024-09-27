@@ -64,6 +64,7 @@ fn qr_code_from(
 async fn get_qr(
     state: AppState,
     key: CacheKey,
+    filename: Option<String>,
     headers: HeaderMap,
 ) -> Result<pages::Qr<'static>, pages::ErrorResponse<'static>> {
     let id = key.id();
@@ -71,13 +72,14 @@ async fn get_qr(
         .await
         .map_err(Error::from)??;
 
-    Ok(pages::Qr::new(qr_code, key))
+    Ok(pages::Qr::new(qr_code, filename, key))
 }
 
 fn get_download(
     text: String,
     id: &str,
     extension: &str,
+    filename: Option<String>
 ) -> Result<impl IntoResponse, pages::ErrorResponse<'static>> {
     // Validate extension.
     if !extension.is_ascii() {
@@ -85,8 +87,14 @@ fn get_download(
     }
 
     let content_type = "text; charset=utf-8";
+    let file = filename.map(|s| 
+        std::path::Path::new(&s)
+            .extension().and_then(|o|o.to_str())
+            .map(String::from)
+            .unwrap_or(String::from(format!(r#"{s}.{extension}"#)))
+    ).unwrap_or(String::from(format!(r#"{id}.{extension}"#)));
     let content_disposition =
-        HeaderValue::from_str(&format!(r#"attachment; filename="{id}.{extension}"#))
+        HeaderValue::from_str(&format!(r#"attachment; filename="{file}"#))
             .expect("constructing valid header value");
 
     Ok((
@@ -115,21 +123,21 @@ async fn get_html(
 
     if let Some(html) = state.cache.get(&key) {
         tracing::trace!(?key, "found cached item");
-        return Ok(pages::Paste::new(key, html, can_delete).into_response());
+        return Ok(pages::Paste::new(key, entry.filename, html, can_delete).into_response());
     }
 
     // TODO: turn this upside-down, i.e. cache it but only return a cached version if we were able
     // to decrypt the content. Highlighting is probably still much slower than decryption.
     let can_be_cached = !entry.must_be_deleted;
     let ext = key.ext.clone();
-    let html = Html::from(entry, ext).await?;
+    let html = Html::from(&entry, ext).await?;
 
     if can_be_cached && !is_protected {
         tracing::trace!(?key, "cache item");
         state.cache.put(key.clone(), html.clone());
     }
 
-    Ok(pages::Paste::new(key, html, can_delete).into_response())
+    Ok(pages::Paste::new(key, entry.filename, html, can_delete).into_response())
 }
 
 pub async fn get(
@@ -160,12 +168,12 @@ pub async fn get(
 
             match query.fmt {
                 Some(Format::Raw) => return Ok(entry.text.into_response()),
-                Some(Format::Qr) => return Ok(get_qr(state, key, headers).await.into_response()),
+                Some(Format::Qr) => return Ok(get_qr(state, key, entry.filename, headers).await.into_response()),
                 None => (),
             }
 
             if let Some(extension) = query.dl {
-                return Ok(get_download(entry.text, &key.id(), &extension).into_response());
+                return Ok(get_download(entry.text, &key.id(), &extension, entry.filename).into_response());
             }
 
             if let Some(value) = headers.get(header::ACCEPT) {

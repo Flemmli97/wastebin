@@ -1,5 +1,6 @@
 use crate::db::write;
 use crate::env::BASE_PATH;
+use crate::highlight::DATA;
 use crate::id::Id;
 use crate::{pages, AppState, Error};
 use axum::extract::{Form, State};
@@ -12,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub struct Entry {
     pub text: String,
     pub extension: Option<String>,
+    pub filename: Option<String>,
     pub expires: String,
     pub password: String,
 }
@@ -26,9 +28,28 @@ impl From<Entry> for write::Entry {
             Ok(secs) => Some(secs),
         };
 
+        // If extension is present use that. Otherwise try to get from filename\
+        let filename: Option<String> = entry.filename.clone();
+        let extension = entry.extension.or(filename.and_then(|f|{
+            let path = std::path::Path::new(&f);
+            let file = path.file_name().and_then(|s| {
+                if let Some(_) = DATA.syntax_set.find_syntax_by_extension(&s.to_string_lossy()) {
+                    return path.file_name().map(|f|f.to_string_lossy().into_owned());
+                }
+                None
+            });
+            file.or(path.extension().and_then(|s| {
+                if let Some(_) = DATA.syntax_set.find_syntax_by_extension(&s.to_string_lossy()) {
+                    return path.extension().map(|f|f.to_string_lossy().into_owned());
+                }
+                None
+            }))
+        }));
+
         Self {
             text: entry.text,
-            extension: entry.extension,
+            extension,
+            filename: entry.filename,
             expires,
             burn_after_reading,
             uid: None,

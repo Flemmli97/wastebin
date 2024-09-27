@@ -43,6 +43,7 @@ static MIGRATIONS: LazyLock<Migrations> = LazyLock::new(|| {
         ),
         M::up(include_str!("migrations/0005-drop-text-column.sql")),
         M::up(include_str!("migrations/0006-add-nonce-column.sql")),
+        M::up(include_str!("migrations/0007-add-filename-column.sql")),
     ])
 });
 
@@ -77,6 +78,8 @@ pub mod write {
         pub text: String,
         /// File extension
         pub extension: Option<String>,
+        /// File name
+        pub filename: Option<String>,
         /// Expiration in seconds from now
         pub expires: Option<u32>,
         /// Delete if read
@@ -160,6 +163,7 @@ pub mod read {
         pub must_be_deleted: bool,
         /// User identifier that inserted the entry
         pub uid: Option<i64>,
+        pub filename: Option<String>,
         /// Nonce for this entry
         pub nonce: Option<Vec<u8>>,
     }
@@ -168,6 +172,7 @@ pub mod read {
     pub struct CompressedReadEntry {
         /// Compressed data
         data: Vec<u8>,
+        filename: Option<String>,
         /// Entry must be deleted
         must_be_deleted: bool,
         /// User identifier that inserted the entry
@@ -178,6 +183,7 @@ pub mod read {
     pub struct Entry {
         /// Content
         pub text: String,
+        pub filename: Option<String>,
         /// Delete if read
         pub must_be_deleted: bool,
         /// User identifier that inserted the entry
@@ -193,6 +199,7 @@ pub mod read {
                 (Some(_), None) => Err(Error::NoPassword),
                 (None, None | Some(_)) => Ok(CompressedReadEntry {
                     data: self.data,
+                    filename: self.filename,
                     must_be_deleted: self.must_be_deleted,
                     uid: self.uid,
                 }),
@@ -201,6 +208,7 @@ pub mod read {
                     let decrypted = encrypted.decrypt(password).await?;
                     Ok(CompressedReadEntry {
                         data: decrypted,
+                        filename: self.filename,
                         must_be_deleted: self.must_be_deleted,
                         uid: self.uid,
                     })
@@ -222,6 +230,7 @@ pub mod read {
 
             Ok(Entry {
                 text,
+                filename: self.filename,
                 uid: self.uid,
                 must_be_deleted: self.must_be_deleted,
             })
@@ -254,14 +263,15 @@ impl Database {
 
         spawn_blocking(move || match entry.expires {
             None => conn.lock().execute(
-                "INSERT INTO entries (id, uid, data, burn_after_reading, nonce) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![id, entry.uid, data, entry.burn_after_reading, nonce],
+                "INSERT INTO entries (id, uid, filename, data, burn_after_reading, nonce) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![id, entry.uid, entry.filename, data, entry.burn_after_reading, nonce],
             ),
             Some(expires) => conn.lock().execute(
-                "INSERT INTO entries (id, uid, data, burn_after_reading, nonce, expires) VALUES (?1, ?2, ?3, ?4, ?5, datetime('now', ?6))",
+                "INSERT INTO entries (id, uid, filename, data, burn_after_reading, nonce, expires) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now', ?7))",
                 params![
                     id,
                     entry.uid,
+                    entry.filename,
                     data,
                     entry.burn_after_reading,
                     nonce,
@@ -281,7 +291,7 @@ impl Database {
 
         let entry = spawn_blocking(move || {
             conn.lock().query_row(
-                "SELECT data, burn_after_reading, uid, nonce, expires < datetime('now') FROM entries WHERE id=?1",
+                "SELECT data, burn_after_reading, uid, nonce, filename, expires < datetime('now') FROM entries WHERE id=?1",
                 params![id_as_u32],
                 |row| {
                     Ok(read::DatabaseEntry {
@@ -289,7 +299,8 @@ impl Database {
                         must_be_deleted: row.get::<_, Option<bool>>(1)?.unwrap_or(false),
                         uid: row.get(2)?,
                         nonce: row.get(3)?,
-                        expired: row.get::<_, Option<bool>>(4)?.unwrap_or(false),
+                        expired: row.get::<_, Option<bool>>(5)?.unwrap_or(false),
+                        filename: row.get(4)?
                     })
                 },
             )

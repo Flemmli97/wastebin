@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.80"
 
 [dependencies]
-askama = { version = "0.12", default-features = false, features = ["with-axum"] }
+askama = { version = "0.12", default-features = false, features = ["with-axum", "serde-json"] }
 askama_axum = { version = "0.4" }
 async-compression = { version = "0.4", features = ["tokio", "zstd"] }
 axum = { version = "0.7", features = ["json", "query"] }

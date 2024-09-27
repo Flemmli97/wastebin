@@ -2,13 +2,21 @@
 @import url("dark.css") (prefers-color-scheme: dark);
 
 @media (prefers-color-scheme: dark) {
+
+  :root {
+    --background-color: #0f1419;
+    --background-color-alt: #1d2936;
+    --text-color: #e6e1cf;
+    --selection-color: #e6e1cf;
+  }
+
   body, textarea, select, input, select > option:hover {
-    background-color: #0f1419;
-    color: #e6e1cf;
+    background-color: var(--background-color);
+    color: var(--text-color);
   }
 
   select {
-    color: #e6e1cf;
+    color: var(--selection-color);
   }
 
   header {
@@ -17,12 +25,20 @@
 }
 
 @media (prefers-color-scheme: light) {
+
+  :root {
+    --background-color: #fafafa;
+    --text-color: #000000;
+    --selection-color: #0f1419;
+  }
+
   body, textarea, select, input, select > option:hover {
-    background-color: #fafafa;
+    background-color: var(--background-color);
+    color: var(--text-color);
   }
 
   select {
-    color: #0f1419;
+    color: var(--selection-color);
   }
 
   header {
@@ -182,7 +198,19 @@ a, a:visited, a:hover {
   grid-row: 1/2;
 }
 
-.expiration-list, .password, .paste-button {
+.filename {
+  margin-top: 1em;
+}
+
+.filename-page {
+  background-color: var(--background-color-alt);
+  display: flex;
+  border-radius: 4px;
+  align-items: center;
+  flex-direction: column;
+}
+
+.extensions-list, .expiration-list, .password, .paste-button {
   margin-top: 2em;
 }
 
@@ -190,7 +218,7 @@ a, a:visited, a:hover {
   width: 100%;
 }
 
-.password > input {
+.password > input, .filename > input {
   width: 100%;
 }
 

@@ -111,6 +111,7 @@ impl<'a> Index<'a> {
 pub struct Paste<'a> {
     meta: &'a env::Metadata<'a>,
     base_path: &'static env::BasePath,
+    filename: String,
     id: String,
     ext: String,
     can_delete: bool,
@@ -119,12 +120,13 @@ pub struct Paste<'a> {
 
 impl<'a> Paste<'a> {
     /// Construct new paste view from cache `key` and paste `html`.
-    pub fn new(key: CacheKey, html: Html, can_delete: bool) -> Self {
+    pub fn new(key: CacheKey, filename: Option<String>, html: Html, can_delete: bool) -> Self {
         let html = html.into_inner();
 
         Self {
             meta: &env::METADATA,
             base_path: &env::BASE_PATH,
+            filename: filename.unwrap_or_default(),
             id: key.id(),
             ext: key.ext,
             can_delete,
@@ -172,17 +174,19 @@ pub struct Qr<'a> {
     base_path: &'static env::BasePath,
     id: String,
     ext: String,
+    filename: String,
     can_delete: bool,
     code: qrcodegen::QrCode,
 }
 
 impl<'a> Qr<'a> {
     /// Construct new QR code view from `code`.
-    pub fn new(code: qrcodegen::QrCode, key: CacheKey) -> Self {
+    pub fn new(code: qrcodegen::QrCode, filename: Option<String>, key: CacheKey) -> Self {
         Self {
             meta: &env::METADATA,
             base_path: &env::BASE_PATH,
             id: key.id(),
+            filename: filename.unwrap_or_default(),
             ext: key.ext,
             code,
             can_delete: false,
