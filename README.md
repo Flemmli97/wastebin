@@ -9,6 +9,13 @@ A minimal pastebin with a design shamelessly copied from
 
 <p align="center"><strong><a href="https://bin.bloerg.net">DEMO</a></strong> (resets every day)</p>
 
+## Fork
+
+This is a fork of wastebin that adds the following things:
+
+* Allows defining a filename. The name will be displayed when viewing a paste.
+* Allows automatic language detection using the filename. Selecting a language manually will overwrite it
+* Save the creation date of the paste in the db
 
 ## Features
 
@@ -166,7 +173,8 @@ POST a new paste to the `/` endpoint with the following JSON payload:
   "text": "<paste content>",
   "extension": "<file extension, optional>",
   "expires": <number of seconds from now, optional>,
-  "burn_after_reading": <true/false, optional>
+  "burn_after_reading": <true/false, optional>,
+  "filename": "<this fork: a filename to pass. if extension is undefined will use this name to determine the extension. optional>"
 }
 ```
 
