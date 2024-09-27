@@ -6,7 +6,7 @@
 
   function onKey(e) {
     if (e.key == 'n') {
-      window.location.href = '{{ base_path.path() }}';
+      window.location.href = '{{ base_path.route() }}';
     }
     else if (e.key == 'r') {
       window.location.href = '{{ base_path.join(id) }}?fmt=raw';

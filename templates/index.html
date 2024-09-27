@@ -89,7 +89,7 @@
 {% endblock %}
 
 {%- block content -%}
-    <form action="{{ base_path.path() }}" method="post" style="height: 100%;">
+    <form action="{{ base_path.route() }}" method="post" style="height: 100%;">
       <div class="container">
         <div class="content">
           <textarea id="text" name="text" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="<paste text or drop file here>" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);" onkeydown="keyDownHandler(event);" autofocus></textarea>

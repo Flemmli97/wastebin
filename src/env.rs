@@ -56,6 +56,16 @@ impl BasePath {
         &self.0
     }
 
+    pub fn route(&self) -> &str {
+        let stripped = self.0.strip_suffix("/");
+        if let Some(s) = stripped {
+            if !s.is_empty() {
+                return &s;
+            }
+        }
+        &self.0
+    }
+
     pub fn join(&self, s: &str) -> String {
         let b = &self.0;
         format!("{b}{s}")

@@ -43,7 +43,7 @@ impl FromRef<AppState> for Key {
 
 pub(crate) fn make_app(max_body_size: usize, timeout: Duration) -> Router<AppState> {
     Router::new()
-        .nest(BASE_PATH.path(), routes::routes())
+        .nest(BASE_PATH.route(), routes::routes())
         .layer(
             ServiceBuilder::new()
                 .layer(DefaultBodyLimit::max(max_body_size))

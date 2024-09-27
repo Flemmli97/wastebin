@@ -241,5 +241,5 @@ pub async fn delete(
 
     state.db.delete(id).await?;
 
-    Ok(Redirect::to(BASE_PATH.path()))
+    Ok(Redirect::to(BASE_PATH.route()))
 }
