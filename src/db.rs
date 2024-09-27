@@ -14,7 +14,7 @@ static MIGRATIONS: LazyLock<Migrations> = LazyLock::new(|| {
         M::up(include_str!("migrations/0001-initial.sql")),
         M::up(include_str!("migrations/0002-add-created-column.sql")),
         M::up(include_str!(
-            "migrations/0003-drop-created-add-uid-column.sql"
+            "migrations/0003-add-uid-column.sql"
         )),
         M::up_with_hook(
             include_str!("migrations/0004-add-compressed-column.sql"),
@@ -263,11 +263,11 @@ impl Database {
 
         spawn_blocking(move || match entry.expires {
             None => conn.lock().execute(
-                "INSERT INTO entries (id, uid, filename, data, burn_after_reading, nonce) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO entries (id, uid, filename, data, burn_after_reading, nonce, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'))",
                 params![id, entry.uid, entry.filename, data, entry.burn_after_reading, nonce],
             ),
             Some(expires) => conn.lock().execute(
-                "INSERT INTO entries (id, uid, filename, data, burn_after_reading, nonce, expires) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now', ?7))",
+                "INSERT INTO entries (id, uid, filename, data, burn_after_reading, nonce, expires, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now', ?7), datetime('now'))",
                 params![
                     id,
                     entry.uid,
