@@ -182,7 +182,12 @@ After successful insertion, you will receive a JSON response with the path to
 the newly created paste:
 
 ```
-{"path":"/Ibv9Fa.rs"}
+{
+  "path":"/Ibv9Fa.rs",
+  "file": "<the filename. if you didnt pass one the path id is used>",
+  "extension": "<the extension used if present>",
+  "expires": "<expiration duration in sec if defined>",
+}
 ```
 
 To retrieve the raw content, make a GET request on the `/:id` route and an
