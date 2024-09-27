@@ -1,5 +1,3 @@
-use std::ops::Index;
-
 use crate::db::write;
 use crate::env::BASE_PATH;
 use crate::errors::{Error, JsonErrorResponse};
