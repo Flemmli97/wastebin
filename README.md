@@ -92,7 +92,7 @@ to.
 
 
 ### Run with docker-compose
-```
+```dockerfile
 version: '3.3'
 services:
   wastebin:
@@ -168,7 +168,7 @@ run-time behavior:
 
 POST a new paste to the `/` endpoint with the following JSON payload:
 
-```
+```json
 {
   "text": "<paste content>",
   "extension": "<file extension, optional>",
@@ -181,9 +181,9 @@ POST a new paste to the `/` endpoint with the following JSON payload:
 After successful insertion, you will receive a JSON response with the path to
 the newly created paste:
 
-```
+```json
 {
-  "path":"/Ibv9Fa.rs",
+  "path":"<path to the file, e.g. /Ibv9Fa.rs>",
   "file": "<the filename. if you didnt pass one the path id is used>",
   "extension": "<the extension used if present>",
   "expires": "<expiration duration in sec if defined>",
