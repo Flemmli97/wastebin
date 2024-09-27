@@ -1,3 +1,5 @@
+use std::f32::consts::E;
+
 use crate::db::write;
 use crate::env::BASE_PATH;
 use crate::errors::{Error, JsonErrorResponse};
@@ -9,7 +11,7 @@ use axum::Json;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
     pub text: String,
     pub extension: Option<String>,
@@ -22,6 +24,9 @@ pub struct Entry {
 #[derive(Deserialize, Serialize)]
 pub struct RedirectResponse {
     pub path: String,
+    pub file: String,
+    pub extension: Option<String>,
+    pub expires: Option<u32>,
 }
 
 impl From<Entry> for write::Entry {
@@ -38,7 +43,7 @@ impl From<Entry> for write::Entry {
             });
             file.or(path.extension().and_then(|s| {
                 if let Some(_) = DATA.syntax_set.find_syntax_by_extension(&s.to_string_lossy()) {
-                    return path.file_name().map(|f|f.to_string_lossy().into_owned());
+                    return path.extension().map(|f|f.to_string_lossy().into_owned());
                 }
                 None
             }))
@@ -77,7 +82,11 @@ pub async fn insert(
 
     let url = id.to_url_path(&entry);
     let path = BASE_PATH.join(&url);
+    let file = entry.filename.clone();
+    let file = file.unwrap_or(id.to_string());
+    let expires = entry.expires.clone();
+    let extension = entry.extension.clone();
     state.db.insert(id, entry).await?;
 
-    Ok(Json::from(RedirectResponse { path }))
+    Ok(Json::from(RedirectResponse { path, file, expires, extension }))
 }
