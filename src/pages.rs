@@ -79,26 +79,26 @@ const EXPIRATION_OPTIONS: [(&str, Expiration); 8] = [
 impl<'a> Index<'a> {
     fn expiry_options(&self) -> String {
         let mut option_set = String::new();
-        let mut wrote_first = false;
-
         option_set.push('\n');
 
-        for (opt_name, opt_val) in EXPIRATION_OPTIONS {
-            if self.max_expiration.is_none()
-                || opt_val == Expiration::Burn
-                || matches!((self.max_expiration, opt_val), (Some(exp), Expiration::Time(time)) if time <= exp)
-            {
-                option_set.push_str("<option");
-                if !wrote_first {
-                    option_set.push_str(" selected");
-                    wrote_first = true;
-                }
-                option_set.push_str(" value=\"");
-                option_set.push_str(opt_val.to_string().as_ref());
-                option_set.push_str("\">");
-                option_set.push_str(opt_name);
-                option_set.push_str("</option>\n");
+        let options: Vec<_> = EXPIRATION_OPTIONS.into_iter().filter(|(_, opt_val)| {
+            return self.max_expiration.is_none()
+            || *opt_val == Expiration::Burn
+            || matches!((self.max_expiration, *opt_val), (Some(exp), Expiration::Time(time)) if time <= exp);
+        }).collect();
+
+        let select = options.len() - 2;
+
+        for (i, (opt_name, opt_val)) in options.iter().enumerate() {
+            option_set.push_str("<option");
+            if i == select {
+                option_set.push_str(" selected");
             }
+            option_set.push_str(" value=\"");
+            option_set.push_str(opt_val.to_string().as_ref());
+            option_set.push_str("\">");
+            option_set.push_str(opt_name);
+            option_set.push_str("</option>\n");
         }
 
         option_set
