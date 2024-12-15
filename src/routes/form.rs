@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use crate::db::write;
 use crate::env::BASE_PATH;
 use crate::highlight::DATA;
@@ -5,7 +7,7 @@ use crate::id::Id;
 use crate::{pages, AppState, Error};
 use axum::extract::{Form, State};
 use axum::response::Redirect;
-use axum_extra::extract::cookie::{Cookie, SignedCookieJar};
+use axum_extra::extract::cookie::{Cookie, SameSite, SignedCookieJar};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -23,8 +25,8 @@ impl From<Entry> for write::Entry {
         let burn_after_reading = Some(entry.expires == "burn");
         let password = (!entry.password.is_empty()).then_some(entry.password);
 
-        let expires = match entry.expires.parse::<u32>() {
-            Ok(0) | Err(_) => None,
+        let expires = match entry.expires.parse::<NonZeroU32>() {
+            Err(_) => None,
             Ok(secs) => Some(secs),
         };
 
@@ -62,6 +64,7 @@ pub async fn insert(
     state: State<AppState>,
     jar: SignedCookieJar,
     Form(entry): Form<Entry>,
+    is_https: bool,
 ) -> Result<(SignedCookieJar, Redirect), pages::ErrorResponse<'static>> {
     let id: Id = tokio::task::spawn_blocking(|| {
         let mut rng = rand::thread_rng();
@@ -101,6 +104,12 @@ pub async fn insert(
 
     state.db.insert(id, entry).await?;
 
-    let jar = jar.add(Cookie::new("uid", uid.to_string()));
+    let cookie = Cookie::build(("uid", uid.to_string()))
+        .http_only(true)
+        .secure(is_https)
+        .same_site(SameSite::Strict)
+        .build();
+
+    let jar = jar.add(cookie);
     Ok((jar, Redirect::to(&url_with_base)))
 }

@@ -3,6 +3,7 @@ use crate::crypto::Password;
 use crate::db::read::Entry;
 use crate::env::BASE_PATH;
 use crate::highlight::Html;
+use crate::pages::Burn;
 use crate::routes::{form, json};
 use crate::{pages, AppState, Error};
 use axum::body::Body;
@@ -202,12 +203,25 @@ pub async fn insert(
         .ok_or_else(|| StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response())?;
 
     if content_type == headers::ContentType::form_url_encoded() {
+        let is_https = headers
+            .get(http::header::HOST)
+            .zip(headers.get(http::header::ORIGIN))
+            .and_then(|(host, origin)| host.to_str().ok().zip(origin.to_str().ok()))
+            .and_then(|(host, origin)| {
+                origin
+                    .strip_prefix("https://")
+                    .map(|origin| origin.starts_with(host))
+            })
+            .unwrap_or(false);
+
         let entry: Form<form::Entry> = request
             .extract()
             .await
             .map_err(IntoResponse::into_response)?;
 
-        Ok(form::insert(state, jar, entry).await.into_response())
+        Ok(form::insert(state, jar, entry, is_https)
+            .await
+            .into_response())
     } else if content_type == headers::ContentType::json() {
         let entry: Json<json::Entry> = request
             .extract()
@@ -242,4 +256,17 @@ pub async fn delete(
     state.db.delete(id).await?;
 
     Ok(Redirect::to(BASE_PATH.route()))
+}
+
+pub async fn burn_created(
+    Path(id): Path<String>,
+    headers: HeaderMap,
+    state: State<AppState>,
+) -> Result<impl IntoResponse, pages::ErrorResponse<'static>> {
+    let id_clone = id.clone();
+    let qr_code = tokio::task::spawn_blocking(move || qr_code_from(state.0, &headers, &id))
+        .await
+        .map_err(Error::from)??;
+
+    Ok(Burn::new(qr_code, id_clone))
 }

@@ -2,7 +2,7 @@ use crate::{db, highlight};
 use axum_extra::extract::cookie::Key;
 use std::env::VarError;
 use std::net::SocketAddr;
-use std::num::{NonZeroUsize, ParseIntError};
+use std::num::{NonZero, NonZeroU32, NonZeroUsize, ParseIntError};
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -90,7 +90,7 @@ pub static METADATA: LazyLock<Metadata> = LazyLock::new(|| {
     }
 });
 
-// NOTE: This relies on `VAR_BASE_URL` but repeates parsing to handle errors.
+// NOTE: This relies on `VAR_BASE_URL` but repeats parsing to handle errors.
 pub static BASE_PATH: LazyLock<BasePath> = LazyLock::new(|| {
     std::env::var(VAR_BASE_URL).map_or_else(
         |err| {
@@ -188,9 +188,10 @@ pub fn http_timeout() -> Result<Duration, Error> {
         .map_err(Error::HttpTimeout)
 }
 
-pub fn max_paste_expiration() -> Result<Option<u32>, Error> {
+pub fn max_paste_expiration() -> Result<Option<NonZeroU32>, Error> {
     std::env::var(VAR_MAX_PASTE_EXPIRATION)
         .ok()
         .map(|value| value.parse::<u32>().map_err(Error::MaxPasteExpiration))
         .transpose()
+        .map(|op| op.and_then(NonZero::new))
 }

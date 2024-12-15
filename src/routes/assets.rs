@@ -13,15 +13,15 @@ fn css_headers() -> impl IntoResponseParts {
 }
 
 fn style_css() -> impl IntoResponse {
-    (css_headers(), DATA.style.content.to_string())
+    (css_headers(), DATA.style.content)
 }
 
 fn dark_css() -> impl IntoResponse {
-    (css_headers(), DATA.dark.content.to_string())
+    (css_headers(), DATA.dark.content)
 }
 
 fn light_css() -> impl IntoResponse {
-    (css_headers(), DATA.light.content.to_string())
+    (css_headers(), DATA.light.content)
 }
 
 fn favicon() -> impl IntoResponse {
@@ -35,7 +35,7 @@ fn favicon() -> impl IntoResponse {
 pub fn routes() -> Router<AppState> {
     let style_name = &DATA.style.name;
     Router::new()
-        .route("/favicon.png", get(|| async { favicon() }))
+        .route("/favicon.ico", get(|| async { favicon() }))
         .route(&format!("/{style_name}"), get(|| async { style_css() }))
         .route("/dark.css", get(|| async { dark_css() }))
         .route("/light.css", get(|| async { light_css() }))

@@ -5,6 +5,7 @@ use crate::errors::Error;
 use axum::extract::{DefaultBodyLimit, FromRef, Request};
 use axum::{Router, ServiceExt};
 use axum_extra::extract::cookie::Key;
+use std::num::NonZeroU32;
 use tower_http::normalize_path::NormalizePathLayer;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -33,7 +34,7 @@ pub struct AppState {
     cache: Cache,
     key: Key,
     base_url: Option<Url>,
-    max_expiration: Option<u32>,
+    max_expiration: Option<NonZeroU32>,
 }
 
 impl FromRef<AppState> for Key {
@@ -106,6 +107,8 @@ async fn start() -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("serving on {addr}");
     tracing::debug!("caching {cache_size} paste highlights");
     tracing::debug!("restricting maximum body size to {max_body_size} bytes");
+    tracing::debug!("enforcing a http timeout of {timeout:#?}");
+    tracing::debug!("maximum expiration time of {max_expiration:?} seconds");
 
     let service = make_app(max_body_size, timeout).with_state(state);
     let app = NormalizePathLayer::trim_trailing_slash().layer(service);

@@ -1,3 +1,7 @@
+use std::num::NonZero;
+use std::num::NonZeroU32;
+use std::sync::OnceLock;
+
 use crate::cache::Key as CacheKey;
 use crate::env;
 use crate::highlight::Html;
@@ -35,11 +39,11 @@ impl From<crate::Error> for ErrorResponse<'_> {
 pub struct Index<'a> {
     meta: &'a env::Metadata<'a>,
     base_path: &'static env::BasePath,
-    max_expiration: Option<u32>,
+    max_expiration: Option<NonZeroU32>,
 }
 
-impl<'a> Index<'a> {
-    pub fn new(max_expiration: Option<u32>) -> Self {
+impl Index<'_> {
+    pub fn new(max_expiration: Option<NonZeroU32>) -> Self {
         Self {
             meta: &env::METADATA,
             base_path: &env::BASE_PATH,
@@ -52,7 +56,7 @@ impl<'a> Index<'a> {
 enum Expiration {
     None,
     Burn,
-    Time(u32),
+    Time(NonZeroU32),
 }
 
 impl std::fmt::Display for Expiration {
@@ -65,43 +69,56 @@ impl std::fmt::Display for Expiration {
     }
 }
 
+// TODO: replace once Option::expect is const (https://github.com/rust-lang/rust/issues/67441) to construct EXPIRATION_OPTIONS
+macro_rules! nonzero {
+    ($value:literal) => {
+        match NonZero::new($value) {
+            Some(v) => v,
+            None => unreachable!(),
+        }
+    };
+}
+
 const EXPIRATION_OPTIONS: [(&str, Expiration); 8] = [
     ("never", Expiration::None),
-    ("10 minutes", Expiration::Time(600)),
-    ("1 hour", Expiration::Time(3600)),
-    ("1 day", Expiration::Time(86400)),
-    ("1 week", Expiration::Time(604_800)),
-    ("1 month", Expiration::Time(2_592_000)),
-    ("1 year", Expiration::Time(31_536_000)),
+    ("10 minutes", Expiration::Time(nonzero!(600))),
+    ("1 hour", Expiration::Time(nonzero!(3600))),
+    ("1 day", Expiration::Time(nonzero!(86400))),
+    ("1 week", Expiration::Time(nonzero!(604_800))),
+    ("1 month", Expiration::Time(nonzero!(2_592_000))),
+    ("1 year", Expiration::Time(nonzero!(31_536_000))),
     ("🔥 after reading", Expiration::Burn),
 ];
 
-impl<'a> Index<'a> {
-    fn expiry_options(&self) -> String {
-        let mut option_set = String::new();
-        option_set.push('\n');
+impl Index<'_> {
+    fn expiry_options(&self) -> &str {
+        static EXPIRATION_OPTIONS_HTML: OnceLock<String> = OnceLock::new();
 
-        let options: Vec<_> = EXPIRATION_OPTIONS.into_iter().filter(|(_, opt_val)| {
-            return self.max_expiration.is_none()
-            || *opt_val == Expiration::Burn
-            || matches!((self.max_expiration, *opt_val), (Some(exp), Expiration::Time(time)) if time <= exp);
-        }).collect();
+        EXPIRATION_OPTIONS_HTML.get_or_init(|| {
+            let mut option_set = String::new();
+            option_set.push('\n');
+            let options: Vec<_> = EXPIRATION_OPTIONS.into_iter().filter(|(_, opt_val)| {
+                return self.max_expiration.is_none()
+                || *opt_val == Expiration::Burn
+                || matches!((self.max_expiration, *opt_val), (Some(exp), Expiration::Time(time)) if time <= exp);
+            }).collect();
 
-        let select = options.len() - 2;
+            let select = options.len() - 2;
 
-        for (i, (opt_name, opt_val)) in options.iter().enumerate() {
-            option_set.push_str("<option");
-            if i == select {
-                option_set.push_str(" selected");
-            }
-            option_set.push_str(" value=\"");
-            option_set.push_str(opt_val.to_string().as_ref());
-            option_set.push_str("\">");
-            option_set.push_str(opt_name);
-            option_set.push_str("</option>\n");
-        }
+            for (i, (opt_name, opt_val)) in options.iter().enumerate() {
+                option_set.push_str("<option");
+                if i == select {
+                    option_set.push_str(" selected");
+                    }
+                option_set.push_str(" value=\"");
+                option_set.push_str(opt_val.to_string().as_ref());
+                option_set.push_str("\">");
+                option_set.push_str(opt_name);
+                option_set.push_str("</option>\n");
+                }
 
-        option_set
+            option_set
+        })
     }
 }
 
@@ -118,7 +135,7 @@ pub struct Paste<'a> {
     html: String,
 }
 
-impl<'a> Paste<'a> {
+impl Paste<'_> {
     /// Construct new paste view from cache `key` and paste `html`.
     pub fn new(key: CacheKey, filename: Option<String>, html: Html, can_delete: bool) -> Self {
         let html = html.into_inner();
@@ -146,7 +163,7 @@ pub struct Encrypted<'a> {
     query: String,
 }
 
-impl<'a> Encrypted<'a> {
+impl Encrypted<'_> {
     /// Construct new paste view from cache `key` and paste `html`.
     pub fn new(key: CacheKey, query: QueryData) -> Self {
         let query = match (query.fmt, query.dl) {
@@ -166,6 +183,15 @@ impl<'a> Encrypted<'a> {
     }
 }
 
+/// Return module coordinates that are dark.
+fn dark_modules(code: &qrcodegen::QrCode) -> Vec<(i32, i32)> {
+    let size = code.size();
+    (0..size)
+        .flat_map(|x| (0..size).map(move |y| (x, y)))
+        .filter(|(x, y)| code.get_module(*x, *y))
+        .collect()
+}
+
 /// Paste view showing the formatted paste as well as a bunch of links.
 #[derive(Template)]
 #[template(path = "qr.html", escape = "none")]
@@ -179,7 +205,7 @@ pub struct Qr<'a> {
     code: qrcodegen::QrCode,
 }
 
-impl<'a> Qr<'a> {
+impl Qr<'_> {
     /// Construct new QR code view from `code`.
     pub fn new(code: qrcodegen::QrCode, filename: Option<String>, key: CacheKey) -> Self {
         Self {
@@ -193,32 +219,33 @@ impl<'a> Qr<'a> {
         }
     }
 
-    // Return module coordinates that are dark.
     fn dark_modules(&self) -> Vec<(i32, i32)> {
-        let size = self.code.size();
-        (0..size)
-            .flat_map(|x| (0..size).map(move |y| (x, y)))
-            .filter(|(x, y)| self.code.get_module(*x, *y))
-            .collect()
+        dark_modules(&self.code)
     }
 }
 
 /// Burn page shown if "burn-after-reading" was selected during insertion.
 #[derive(Template)]
-#[template(path = "burn.html")]
+#[template(path = "burn.html", escape = "none")]
 pub struct Burn<'a> {
     meta: &'a env::Metadata<'a>,
     base_path: &'static env::BasePath,
     id: String,
+    code: qrcodegen::QrCode,
 }
 
-impl<'a> Burn<'a> {
+impl Burn<'_> {
     /// Construct new burn page linking to `id`.
-    pub fn new(id: String) -> Self {
+    pub fn new(code: qrcodegen::QrCode, id: String) -> Self {
         Self {
             meta: &env::METADATA,
             base_path: &env::BASE_PATH,
             id,
+            code,
         }
+    }
+
+    fn dark_modules(&self) -> Vec<(i32, i32)> {
+        dark_modules(&self.code)
     }
 }

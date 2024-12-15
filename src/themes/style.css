@@ -70,7 +70,7 @@ header {
   padding: 0 1em 0 1em;
 }
 
-content {
+main {
   flex-grow: 1;
   padding: 1em 2em 1em 2em;
 }
@@ -246,6 +246,7 @@ td.line-number {
 
 .line-number {
   padding-right: 1em;
+  text-align: right;
 }
 
 .line-number > a, .line-number > a:visited {
@@ -259,6 +260,8 @@ td.line-number {
 .line {
   word-wrap: normal;
   white-space: pre;
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 
 .center {

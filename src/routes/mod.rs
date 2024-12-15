@@ -1,6 +1,6 @@
-use crate::pages::{Burn, Index};
+use crate::pages::Index;
 use crate::AppState;
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::routing::{get, Router};
 
 mod assets;
@@ -19,13 +19,15 @@ pub fn routes() -> Router<AppState> {
             "/:id",
             get(paste::get).post(paste::get).delete(paste::delete),
         )
-        .route("/burn/:id", get(|Path(id)| async { Burn::new(id) }))
+        .route("/burn/:id", get(paste::burn_created))
         .route("/delete/:id", get(paste::delete))
         .merge(assets::routes())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::db::write::Entry;
     use crate::env::BASE_PATH;
     use crate::routes;
@@ -87,6 +89,19 @@ mod tests {
 
         let content = res.text().await?;
         assert_eq!(content, "FooBarBaz");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn insert_via_form_fail() -> Result<(), Box<dyn std::error::Error>> {
+        let client = Client::new(make_app()?).await;
+
+        let mut data = HashMap::new();
+        data.insert("Hello", "World");
+
+        let res = client.post(BASE_PATH.path()).form(&data).send().await?;
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         Ok(())
     }
@@ -208,6 +223,18 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn insert_via_json_fail() -> Result<(), Box<dyn std::error::Error>> {
+        let client = Client::new(make_app()?).await;
+
+        let entry = "Hello World";
+
+        let res = client.post(BASE_PATH.path()).json(&entry).send().await?;
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn insert_via_json_encrypted() -> Result<(), Box<dyn std::error::Error>> {
         let client = Client::new(make_app()?).await;
         let password = "SuperSecretPassword";
@@ -247,8 +274,17 @@ mod tests {
         };
 
         let res = client.post(BASE_PATH.path()).form(&data).send().await?;
-        let uid_cookie = res.cookies().find(|cookie| cookie.name() == "uid");
-        assert!(uid_cookie.is_some());
+        let uid_cookie = res.cookies().find(|cookie| cookie.name() == "uid").unwrap();
+        assert_eq!(uid_cookie.name(), "uid");
+        assert!(uid_cookie.value().len() > 40);
+        assert_eq!(uid_cookie.path(), None);
+        assert!(uid_cookie.http_only());
+        assert!(uid_cookie.same_site_strict());
+        assert!(!uid_cookie.secure());
+        assert_eq!(uid_cookie.domain(), None);
+        assert_eq!(uid_cookie.expires(), None);
+        assert_eq!(uid_cookie.max_age(), None);
+
         assert_eq!(res.status(), StatusCode::SEE_OTHER);
 
         let location = res.headers().get("location").unwrap().to_str()?;

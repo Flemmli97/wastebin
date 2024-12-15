@@ -71,7 +71,7 @@ To build an arm64 image on an x86_64 host run
 ```bash
 $ sudo docker build --platform linux/arm64 -t wastebin:v2.4.3-arm64 -f Dockerfile.arm .
 ```
-or 
+or
 ```bash
 $ podman build --arch=arm64 -t wastebin:v2.4.3-arm64 -f Dockerfile.arm
 ```
@@ -132,6 +132,9 @@ When viewing a paste, you can use
 * <kbd>p</kbd> to view the formatted paste,
 * <kbd>?</kbd> to view the list of keybindings.
 
+To paste some text you can also use the <kbd>ctrl</kbd>+<kbd>s</kbd> key
+combination.
+
 
 ### Configuration
 
@@ -152,7 +155,7 @@ run-time behavior:
 * `WASTEBIN_MAX_BODY_SIZE` number of bytes to accept for POST requests. Defaults
   to 1 MB.
 * `WASTEBIN_MAX_PASTE_EXPIRATION` maximum allowed lifetime of a paste in
-  seconds. Defaults to unlimited.
+  seconds. Defaults to 0 meaning unlimited.
 * `WASTEBIN_PASSWORD_SALT` salt used to hash user passwords used for encrypting
   pastes.
 * `WASTEBIN_SIGNING_KEY` sets the key to sign cookies. If not set, a random key

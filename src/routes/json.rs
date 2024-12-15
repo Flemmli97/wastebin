@@ -1,4 +1,4 @@
-use std::f32::consts::E;
+use std::num::NonZeroU32;
 
 use crate::db::write;
 use crate::env::BASE_PATH;
@@ -16,7 +16,7 @@ pub struct Entry {
     pub text: String,
     pub extension: Option<String>,
     pub filename: Option<String>,
-    pub expires: Option<u32>,
+    pub expires: Option<NonZeroU32>,
     pub burn_after_reading: Option<bool>,
     pub password: Option<String>,
 }
@@ -84,7 +84,7 @@ pub async fn insert(
     let path = BASE_PATH.join(&url);
     let file = entry.filename.clone();
     let file = file.unwrap_or(id.to_string());
-    let expires = entry.expires.clone();
+    let expires = entry.expires.map(|i|i.into()).clone();
     let extension = entry.extension.clone();
     state.db.insert(id, entry).await?;
 
